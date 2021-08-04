@@ -21,6 +21,10 @@ private const val TAG = "CrimeListFragment"
 
 class CrimeListFragment : Fragment() {
 
+    /*
+     Callbacks интерфейст обратного вызова, который определяет работу, которую должна выполнить хост-activiity.
+     */
+
     interface Callbacks{
         fun onCrimeSelected(crimeId: UUID)
     }
@@ -33,11 +37,16 @@ class CrimeListFragment : Fragment() {
         ViewModelProviders.of(this).get(CrimeListViewModel::class.java)
     }
 
+    /*
+    Вызывается, когда фракмент прикрепляется к активити.
+     */
     override fun onAttach(context: Context) {
         super.onAttach(context)
         callbacks = context as Callbacks?
     }
-
+    /*
+     Когда открепляется и нужно вернуть нулл.
+     */
     override fun onDetach() {
         super.onDetach()
         callbacks = null
@@ -97,7 +106,7 @@ class CrimeListFragment : Fragment() {
         }
 
         override fun onClick(v: View?) {
-            Toast.makeText(context, "${crime.title} pressed!", Toast.LENGTH_SHORT).show()
+           callbacks?.onCrimeSelected(crime.id)
         }
     }
 

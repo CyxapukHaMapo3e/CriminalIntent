@@ -10,10 +10,16 @@ import android.widget.Button
 import android.widget.CheckBox
 import android.widget.EditText
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.ViewModelProviders
+import java.util.*
+import androidx.lifecycle.Observer
 
 /* СrimeFragment - контроллер, взаимодействующий с объектами модели и представления. Его задача - выдача подробной информации
 о конкретном преступлении и ее обновление при модификации пользователем.
  */
+
+private const val TAG = "CrimeFragment"
+private const val ARG_CRIME_ID = "crime_id"
 
 class CrimeFragment : Fragment() {
 
@@ -21,11 +27,17 @@ class CrimeFragment : Fragment() {
     private lateinit var titleField: EditText
     private lateinit var dateButton: Button
     private lateinit var solvedCheckBox: CheckBox
+    private val crimeDetailViewModel: CrimeDetailViewModel by lazy {
+        ViewModelProviders.of(this).get(CrimeDetailViewModel::class.java)
+    }
 
     //Настраивается экземпляр фрагмента
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         crime = Crime()
+        val crimeId: UUID = arguments?.getSerializable(ARG_CRIME_ID) as UUID
+        crimeDetailViewModel.loadCrime(crimeId)
+
     }
     //Создание и настройка представления фрагмента
     override fun onCreateView(
@@ -42,6 +54,30 @@ class CrimeFragment : Fragment() {
         }
         solvedCheckBox = view.findViewById(R.id.crime_solved) as CheckBox
         return view
+    }
+
+    /*
+    Наблюдение за изменениями. crimeDetailViewModel.crimeLiveDate - данные в том виде, в котором они в настоящее время
+    хранятся в базе данных.
+     */
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        crimeDetailViewModel.crimeLiveData.observe(viewLifecycleOwner, Observer { crime->
+            crime?.let {
+                this.crime = crime
+                updateUI()
+            }
+        })
+    }
+
+    private fun updateUI(){
+        titleField.setText(crime.title)
+        dateButton.text = crime.date.toString()
+        solvedCheckBox.apply{
+            isChecked = crime.isSolved
+            jumpDrawablesToCurrentState()
+        }
     }
 
     /*
@@ -64,7 +100,6 @@ class CrimeFragment : Fragment() {
             }
 
             override fun afterTextChanged(p0: Editable?) {
-                TODO("Not yet implemented")
             }
         }
         titleField.addTextChangedListener(titleWatcher)
@@ -72,6 +107,24 @@ class CrimeFragment : Fragment() {
         solvedCheckBox.apply {
             setOnCheckedChangeListener{_, isCheked ->
                 crime.isSolved = isCheked
+            }
+        }
+    }
+
+    override fun onStop() {
+        super.onStop()
+        crimeDetailViewModel.saveCrime(crime)
+    }
+    /*
+    Создает экземпляр фрагмента, упаковывает и задает его аргументы.
+     */
+    companion object{
+        fun newInstance(crimeId: UUID):CrimeFragment{
+            val args = Bundle().apply {
+                putSerializable(ARG_CRIME_ID, crimeId)
+            }
+            return CrimeFragment().apply {
+                arguments=args
             }
         }
     }

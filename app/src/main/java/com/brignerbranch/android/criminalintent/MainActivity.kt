@@ -2,6 +2,8 @@ package com.brignerbranch.android.criminalintent
 
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.util.Log
+import java.util.*
 
 /*
  MainActivity - хост для CrimeFragment. FragmentManager.beginTransaction() создает и возвращает экземпляр
@@ -11,7 +13,9 @@ import android.os.Bundle
  созданный объект CrimeFragment.
  */
 
-class MainActivity : AppCompatActivity() {
+private const val TAG = "MainActivity"
+
+class MainActivity : AppCompatActivity(), CrimeListFragment.Callbacks {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -21,6 +25,16 @@ class MainActivity : AppCompatActivity() {
             supportFragmentManager.beginTransaction().add(R.id.fragment_container,fragment)
                 .commit()
         }
+    }
 
+    /*
+     Функция FragmentTransaction.replace(Int,Fragment) заменяет фрагмент, размещенный в активити(в контейнере
+     с указанным целочисленным идентификатором ресурса), на новый фрагмент. Если фрагмент еще не размещен в указанном
+     контейнере, то добавляется новый фрагмент, как еслибы мы вызвали .add
+     */
+
+    override fun onCrimeSelected(crimeId: UUID) {
+        val fragment = CrimeFragment.newInstance(crimeId)
+        supportFragmentManager.beginTransaction().replace(R.id.fragment_container,fragment).addToBackStack(null).commit()
     }
 }
