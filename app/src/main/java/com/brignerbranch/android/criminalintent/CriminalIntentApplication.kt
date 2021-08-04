@@ -1,4 +1,4 @@
-package com.brignerbranch.android.criminalintent.datebase
+package com.brignerbranch.android.criminalintent
 
 import android.app.Application
 import com.brignerbranch.android.criminalintent.CrimeRepository

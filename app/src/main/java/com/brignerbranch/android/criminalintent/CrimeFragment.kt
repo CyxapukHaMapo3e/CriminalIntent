@@ -11,6 +11,10 @@ import android.widget.CheckBox
 import android.widget.EditText
 import androidx.fragment.app.Fragment
 
+/* СrimeFragment - контроллер, взаимодействующий с объектами модели и представления. Его задача - выдача подробной информации
+о конкретном преступлении и ее обновление при модификации пользователем.
+ */
+
 class CrimeFragment : Fragment() {
 
     private lateinit var crime: Crime
@@ -18,11 +22,12 @@ class CrimeFragment : Fragment() {
     private lateinit var dateButton: Button
     private lateinit var solvedCheckBox: CheckBox
 
+    //Настраивается экземпляр фрагмента
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         crime = Crime()
     }
-
+    //Создание и настройка представления фрагмента
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -39,13 +44,19 @@ class CrimeFragment : Fragment() {
         return view
     }
 
+    /*
+    TextWatcher это интерфейс слушателя. В функции onTextChanged вызывется toString для объекта
+    CharSequence, представляющий ввод пользователя. Эта функция возвращает строку, которая затем
+    используется для задания заголовка Crime. Некоторые слушатели срабатывают не только при взаимодействии с ними,
+    но и при восстановлении состояния виджета, например при повороте. Слушатели, которые реагируют на ввод
+    данных такие как TextWatcher для EditText или OnCheckChangedListener для CheckBox, тоже так работают.
+     */
     override fun onStart() {
         super.onStart()
 
         val titleWatcher = object : TextWatcher
         {
             override fun beforeTextChanged(p0: CharSequence?, p1: Int, p2: Int, p3: Int) {
-                // ff
             }
 
             override fun onTextChanged(p0: CharSequence?, p1: Int, p2: Int, p3: Int) {

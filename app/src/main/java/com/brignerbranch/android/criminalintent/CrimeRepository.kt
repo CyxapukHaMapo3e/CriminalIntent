@@ -9,6 +9,10 @@ import java.util.*
 
 private const val DATABASE_NAME = "crime-database"
 
+/*
+  Репозиторий - одноэлементный класс(синглтон).
+ */
+
 class CrimeRepository private constructor(context: Context){
 
     private val database: CrimeDatabase = Room.databaseBuilder(

@@ -1,5 +1,6 @@
 package com.brignerbranch.android.criminalintent
 
+import android.content.Context
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
@@ -14,18 +15,37 @@ import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProviders
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import java.util.*
 
 private const val TAG = "CrimeListFragment"
 
 class CrimeListFragment : Fragment() {
 
+    interface Callbacks{
+        fun onCrimeSelected(crimeId: UUID)
+    }
+
     private lateinit var crimeRecyclerView: RecyclerView
     private var adapter: CrimeAdapter? = CrimeAdapter(emptyList())
+    private var callbacks: Callbacks? = null
 
     private val crimeListViewModel: CrimeListViewModel by lazy {
         ViewModelProviders.of(this).get(CrimeListViewModel::class.java)
     }
 
+    override fun onAttach(context: Context) {
+        super.onAttach(context)
+        callbacks = context as Callbacks?
+    }
+
+    override fun onDetach() {
+        super.onDetach()
+        callbacks = null
+    }
+   /*
+     RecuclerView не отображает элементы на самом экране. Он передает эту задачу объекту LayoutManager. Он
+     распологает какждый элемент, а также определяет, как работает прокрутка.
+    */
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -51,7 +71,12 @@ class CrimeListFragment : Fragment() {
         adapter = CrimeAdapter(crimes)
         crimeRecyclerView.adapter = adapter
     }
-
+    /*
+     RecyclerView ожидает, что элемент представления будет обернут в экземпляр ViewHolder. ViewHolder
+     хранит ссылку на представление элемента. В конструкторе CrimeHolder мы берем представление для закрепления.
+     Базовый класс ViewHolder будет закрепляться на свойство под названием itemView. RecyclerView никогда не создает объекты
+     сам по себе. Он всегда создает ViewHolder, которые выводят свои itemView.
+     */
     private inner class CrimeHolder(view: View): RecyclerView.ViewHolder(view), View.OnClickListener {
         private lateinit var crime:Crime
         private val titleTextView: TextView = itemView.findViewById(R.id.crime_title)
@@ -76,6 +101,14 @@ class CrimeListFragment : Fragment() {
         }
     }
 
+    /*
+    Класс RecyclerView не создает ViewHolder сам по себе. Вместо этого используется адаптер. Адаптер
+    представляет собой объект котроллера, который находится между RecyclerView и наборами данных,
+    которые отображает RecyclerView.
+    Функция Adapter.onCreateViewHolder(...) отвечает за создание представления на дисплеее, оборачивает его в холдер
+    и возвращает результат.
+    Функция Adapter.onBindViewHolder(...), отвечает за заполнение данного холдера преступлением из данной позиции.
+     */
     private inner class CrimeAdapter(var crimes:List<Crime>) : RecyclerView.Adapter<CrimeHolder>(){
         override fun getItemCount(): Int = crimes.size
 
