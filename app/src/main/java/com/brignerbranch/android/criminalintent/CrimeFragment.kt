@@ -7,40 +7,55 @@ import android.content.pm.ResolveInfo
 import android.net.Uri
 import android.os.Bundle
 import android.provider.ContactsContract
+import android.provider.MediaStore
 import android.text.Editable
 import android.text.TextWatcher
 import android.text.format.DateFormat
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Button
-import android.widget.CheckBox
-import android.widget.EditText
+import android.widget.*
+import androidx.core.content.FileProvider
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProviders
 import java.util.*
 import androidx.lifecycle.Observer
+import java.io.File
 
-/* СrimeFragment - контроллер, взаимодействующий с объектами модели и представления. Его задача - выдача подробной информации
-о конкретном преступлении и ее обновление при модификации пользователем.
- */
 
 private const val TAG = "CrimeFragment"
 private const val ARG_CRIME_ID = "crime_id"
 private const val DIALOG_DATE = "DialogDate"
 private const val REQUEST_DATE = 0
-private const val REQUSET_CONTACT = 1
+private const val REQUEST_CONTACT = 1
+private const val REQUEST_PHOTO = 2
 private const val DATE_FORMAT = "EEE,MMM,dd"
 
 
 class CrimeFragment : Fragment(), DatePickerFragment.Callbacks {
 
+    companion object {
+        fun newInstance(crimeId: UUID): CrimeFragment {
+            val args = Bundle().apply {
+                putSerializable(ARG_CRIME_ID, crimeId)
+            }
+            return CrimeFragment().apply {
+                arguments = args
+            }
+        }
+    }
+
     private lateinit var crime: Crime
     private lateinit var titleField: EditText
     private lateinit var dateButton: Button
     private lateinit var solvedCheckBox: CheckBox
+    private lateinit var requiresPolice: CheckBox
     private lateinit var reportButton: Button
     private lateinit var suspectButton: Button
+    private lateinit var photoButton: ImageButton
+    private lateinit var photoView: ImageView
+    private lateinit var photoFile: File
+    private lateinit var photoUri: Uri
     private val crimeDetailViewModel: CrimeDetailViewModel by lazy {
         ViewModelProviders.of(this).get(CrimeDetailViewModel::class.java)
     }
@@ -60,7 +75,6 @@ class CrimeFragment : Fragment(), DatePickerFragment.Callbacks {
         return getString(R.string.crime_report, crime.title, dateString, solvedString, suspect)
     }
 
-    //Настраивается экземпляр фрагмента
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         crime = Crime()
@@ -74,7 +88,6 @@ class CrimeFragment : Fragment(), DatePickerFragment.Callbacks {
         updateUI()
     }
 
-    //Создание и настройка представления фрагмента
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -84,21 +97,27 @@ class CrimeFragment : Fragment(), DatePickerFragment.Callbacks {
         titleField = view.findViewById(R.id.crime_title) as EditText
         dateButton = view.findViewById(R.id.crime_date) as Button
         solvedCheckBox = view.findViewById(R.id.crime_solved) as CheckBox
+        requiresPolice = view.findViewById(R.id.crime_police) as CheckBox
         reportButton = view.findViewById(R.id.crime_report) as Button
         suspectButton = view.findViewById(R.id.crime_suspect) as Button
+        photoButton = view.findViewById(R.id.crime_camera) as ImageButton
+        photoView = view.findViewById(R.id.crime_photo) as ImageView
         return view
     }
-
-    /*
-    Наблюдение за изменениями. crimeDetailViewModel.crimeLiveDate - данные в том виде, в котором они в настоящее время
-    хранятся в базе данных.
-     */
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         crimeDetailViewModel.crimeLiveData.observe(viewLifecycleOwner, Observer { crime ->
             crime?.let {
                 this.crime = crime
+                photoFile = crimeDetailViewModel.getPhotoFile(crime)
+                //Вызов geUriForFile преобразует локальный путь к файлу в Uri, который видит приложение камеры.
+                //Функция принимает на вход активити, провайдера и файл фотографии для создания URI, который указывает на файл.
+                photoUri = FileProvider.getUriForFile(
+                    requireActivity(),
+                    "com.brignerbranch.android.criminalintent.FileProvider",
+                    photoFile
+                )
                 updateUI()
             }
         })
@@ -111,23 +130,31 @@ class CrimeFragment : Fragment(), DatePickerFragment.Callbacks {
             isChecked = crime.isSolved
             jumpDrawablesToCurrentState()
         }
+        requiresPolice.apply{
+            isChecked = crime.requiresPolice
+        }
         if (crime.suspect.isNotEmpty()) {
             suspectButton.text = crime.suspect
         }
+        updatePhotoView()
     }
 
-    /*
-    Получение имени контакта
-    Создается запрос всех отображаемых имен контактов в возвращенных данных. Затем запращивается база даных контактов
-    и получается объект Cursor, с которым и работаем. После проверки того, что возвращенный курсор содержит хотя бы одну строку, вызывается
-    функция Cursor.moveToFirst() для перемещения курсора в первую строку.Вызывается функция moveToFirst() для перемещения
-    курсора в первую строку. Вызывается функция getString(Int) для перемещения содержимого первого столбца в виде строки. Эта
-    строка будет именем подозреваемого и мы используем ее для установки подозреваемого в преступлении и текста для кнопки CHOOSE SUSPECT.
-     */
+    private fun updatePhotoView(){
+        if(photoFile.exists()){
+            val bitmap = getScaledBitmap(photoFile.path,requireActivity())
+            photoView.setImageBitmap(bitmap)
+            photoView.contentDescription = getString(R.string.crime_photo_image_description)
+        }else{
+            photoView.setImageDrawable(null)
+            photoView.contentDescription = getString(R.string.crime_photo_no_image_description)
+
+        }
+    }
+
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         when {
             resultCode != Activity.RESULT_OK -> return
-            requestCode == REQUSET_CONTACT && data != null -> {
+            requestCode == REQUEST_CONTACT && data != null -> {
                 val contactUri: Uri? = data.data
                 //Указать, для каких полей ваш запрос должен возвращать значения.
                 val queryFields = arrayOf(ContactsContract.Contacts.DISPLAY_NAME)
@@ -152,16 +179,13 @@ class CrimeFragment : Fragment(), DatePickerFragment.Callbacks {
                     suspectButton.text = suspect
                 }
             }
+            requestCode == REQUEST_PHOTO -> {
+                requireActivity().revokeUriPermission(photoUri,Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+                updatePhotoView()
+            }
         }
     }
 
-    /*
-    TextWatcher это интерфейс слушателя. В функции onTextChanged вызывется toString для объекта
-    CharSequence, представляющий ввод пользователя. Эта функция возвращает строку, которая затем
-    используется для задания заголовка Crime. Некоторые слушатели срабатывают не только при взаимодействии с ними,
-    но и при восстановлении состояния виджета, например при повороте. Слушатели, которые реагируют на ввод
-    данных такие как TextWatcher для EditText или OnCheckChangedListener для CheckBox, тоже так работают.
-     */
     override fun onStart() {
         super.onStart()
 
@@ -184,10 +208,12 @@ class CrimeFragment : Fragment(), DatePickerFragment.Callbacks {
             }
         }
 
-        /*
-        this@CrimeFragment необходим для вызова функции requireFragmentManager() из CrimeFragment а не из
-        DatePickerFragment внутри блока apply.
-         */
+        requiresPolice.apply {
+            setOnCheckedChangeListener{_, isCheked ->
+                crime.requiresPolice = isCheked
+            }
+        }
+
         dateButton.setOnClickListener {
             DatePickerFragment.newInstance(crime.date).apply {
                 setTargetFragment(this@CrimeFragment, REQUEST_DATE)
@@ -195,10 +221,6 @@ class CrimeFragment : Fragment(), DatePickerFragment.Callbacks {
             }
         }
 
-        /*Неявный интент
-        createChooser Создает список, который будет отображаться каждый раз при использованияя
-        неявного интента для запуска активити
-        */
         reportButton.setOnClickListener {
             Intent(Intent.ACTION_SEND).apply {
                 type = "text/plain"
@@ -210,23 +232,46 @@ class CrimeFragment : Fragment(), DatePickerFragment.Callbacks {
             }
         }
 
+
         suspectButton.apply {
             val pickContactIntent =
                 Intent(Intent.ACTION_PICK, ContactsContract.Contacts.CONTENT_URI)
             setOnClickListener {
-                startActivityForResult(pickContactIntent, REQUSET_CONTACT)
+                startActivityForResult(pickContactIntent, REQUEST_CONTACT)
             }
             /*Проверка реагирующих активити
             * Флаг MATCH_DEFAULT_ONLY ограничивает поиск активити с флагом CATEGORY_DEFAULT*/
             val packageManager: PackageManager = requireActivity().packageManager
             val resolvedActivity: ResolveInfo? = packageManager.resolveActivity(
                 pickContactIntent,
-                PackageManager.MATCH_DEFAULT_ONLY)
-            if(resolvedActivity == null){
+                PackageManager.MATCH_DEFAULT_ONLY
+            )
+            if (resolvedActivity == null) {
                 isEnabled = false
             }
-
         }
+
+        photoButton.apply {
+            val packageManager: PackageManager = requireActivity().packageManager
+            val captureImage = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
+            val resolvedActivity: ResolveInfo? = packageManager.resolveActivity(
+                captureImage,
+                PackageManager.MATCH_DEFAULT_ONLY)
+            if(resolvedActivity==null){
+                isEnabled = false
+            }
+            setOnClickListener{
+                captureImage.putExtra(MediaStore.EXTRA_OUTPUT, photoUri)
+                val cameraActivities: List<ResolveInfo> = packageManager.queryIntentActivities(captureImage, PackageManager.MATCH_DEFAULT_ONLY)
+                for(cameraActivity in cameraActivities){
+                    requireActivity().grantUriPermission(cameraActivity.activityInfo.packageName,
+                    photoUri,
+                    Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+                }
+                startActivityForResult(captureImage, REQUEST_PHOTO)
+            }
+        }
+
     }
 
     override fun onStop() {
@@ -234,17 +279,9 @@ class CrimeFragment : Fragment(), DatePickerFragment.Callbacks {
         crimeDetailViewModel.saveCrime(crime)
     }
 
-    /*
-    Создает экземпляр фрагмента, упаковывает и задает его аргументы.
-     */
-    companion object {
-        fun newInstance(crimeId: UUID): CrimeFragment {
-            val args = Bundle().apply {
-                putSerializable(ARG_CRIME_ID, crimeId)
-            }
-            return CrimeFragment().apply {
-                arguments = args
-            }
-        }
+    override fun onDetach() {
+        super.onDetach()
+        requireActivity().revokeUriPermission(photoUri, Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
     }
+
 }

@@ -11,13 +11,6 @@ private const val ARG_DATE = "date"
 
 class DatePickerFragment : DialogFragment() {
 
-    /*
-     OnDateSetListener используется для получения выбранной пользователем даты. Первый параметр - это DatePicker
-    от которого исходит результат. Поскольку в данном случае этот параметр не используется, он имеет имя _. Выбранная дата предоставляется,
-    в формате года, месяца и дня, но для отправки обратно в CrimeFragment необходим объект Date. Мы передаем эти значения в GregorianCalendar
-    и получаем доступ к свойству time, чтобы получить объект Date.
-     */
-
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
         val date = arguments?.getSerializable(ARG_DATE) as Date
         val calendar = Calendar.getInstance()

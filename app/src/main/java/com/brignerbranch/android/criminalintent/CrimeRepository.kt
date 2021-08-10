@@ -4,16 +4,14 @@ import android.content.Context
 import androidx.lifecycle.LiveData
 import androidx.room.Room
 import com.brignerbranch.android.criminalintent.datebase.CrimeDatabase
-import com.brignerbranch.android.criminalintent.datebase.migration_1_2
+
+
+import java.io.File
 import java.lang.IllegalStateException
 import java.util.*
 import java.util.concurrent.Executors
 
 private const val DATABASE_NAME = "crime-database"
-
-/*
-  Репозиторий - одноэлементный класс(синглтон).
- */
 
 class CrimeRepository private constructor(context: Context){
 
@@ -21,18 +19,16 @@ class CrimeRepository private constructor(context: Context){
         context.applicationContext,
         CrimeDatabase::class.java,
         DATABASE_NAME
-    ).addMigrations(migration_1_2).build()
+    ).build()
 
     private val crimeDao = database.crimeDao()
-    private val executor = Executors.newSingleThreadExecutor() /* Функция newSingleThreadExecutor()
-    возвращает экземпляр исполнителя, который указывает на новый поток*/
+    private val executor = Executors.newSingleThreadExecutor()
+
+    private val fileDir = context.applicationContext.filesDir
+    fun getPhotoFile(crime:Crime): File = File(fileDir, crime.photoFileName)
 
     fun getCrimes(): LiveData<List<Crime>> = crimeDao.getCrimes()
     fun getCrime(id: UUID): LiveData<Crime?> = crimeDao.getCrime(id)
-
-    /*
-    Оборачивают вызовы ДАО внутри блока execute{}, выталкивая эти операции из основного потока.
-     */
 
     fun updateCrime(crime: Crime){
         executor.execute{

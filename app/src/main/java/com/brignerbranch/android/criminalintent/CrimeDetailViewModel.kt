@@ -4,15 +4,9 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.Transformations
 import androidx.lifecycle.ViewModel
+import java.io.File
 import java.util.*
 
-/*
- Класс для управления запросов к базе данных. CrimeIdLiveData хранит идентификатор отображаемого в данный
- момент преступления фрагментом. При первом создании CrimeDetailViewModel иднтификатор преступления не устанавлвивается.
- В конце концов CrimeFragment вызовет функцию CrimeDetailViewModel.loadCrime(UUID), чтобы ViewModel понял,
- какое преступление ему нужно загрузить.
- Оператор Transformation
- */
 
 class CrimeDetailViewModel() : ViewModel() {
 
@@ -21,6 +15,10 @@ class CrimeDetailViewModel() : ViewModel() {
 
     var crimeLiveData: LiveData<Crime?> = Transformations.switchMap(crimeIdLiveData){ crimeId ->
         crimeRepository.getCrime(crimeId)
+    }
+
+    fun getPhotoFile(crime:Crime) : File {
+        return crimeRepository.getPhotoFile(crime)
     }
 
     fun loadCrime(crimeId: UUID){
